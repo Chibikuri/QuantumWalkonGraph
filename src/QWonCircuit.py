@@ -49,7 +49,7 @@ class QWonCircle:
         job = execute(qc, backend=backend, shots=1024)
         result = job.result()
         count = result.get_counts(qc)
-        # print(qc)
+        print(qc)
         return count
 
     def coin(self, qc, subnode):
@@ -118,6 +118,7 @@ class QWonCircle:
     
     def _cnwx(self, qc, *qubits):
         for i in qubits[self.subnodes:-1]:
+            print(i)
             qc.x(i)
         if len(qubits) >= 3:
             last = qubits[-1]
@@ -131,10 +132,11 @@ class QWonCircle:
             qc.ccx(*qubits)
         elif len(qubits) == 2:
             qc.cx(*qubits)
-        for i in qubits[self.subnodes:-1]:
-            qc.x(i)
+        for j in qubits[self.subnodes:-1]:
+            print("jj", j)
+            qc.x(j)
 
 if __name__ == "__main__":
-    test = QWonCircle(4, 4, 3)  # 2**(3), 
+    test = QWonCircle(3, 2, 4)  # 2**(3), 
     count = test.QW()
     print(count)
