@@ -38,10 +38,11 @@ class QWonCircle:
         q_subnode = QuantumRegister(self.subnodes, "subn")
         c = ClassicalRegister(self.cnodes)
         qc = QuantumCircuit(q, c, q_subnode)
-
-        self.coin(qc, q_subnode)
-        self._incr(qc, q, q_subnode, self.subnodes)
-        self._decr(qc, q, q_subnode, self.subnodes)
+        
+        for step in range(self.step):
+            self.coin(qc, q_subnode)
+            self._incr(qc, q, q_subnode, self.subnodes)
+            self._decr(qc, q, q_subnode, self.subnodes)
         # self._cnwx(qc, q_subnode[0], q[0], q[1], q[2])
         qc.measure(q, c)
         backend = Aer.get_backend('qasm_simulator')
