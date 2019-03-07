@@ -1,2 +1,2 @@
 # QuantumWalk on Hyper cube
-QuantumWalk for any matrix order hyper cube.
+QuantumWalk for any order hyper cube.
