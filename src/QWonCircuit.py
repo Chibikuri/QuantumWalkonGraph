@@ -1,6 +1,7 @@
 from qiskit import IBMQ, QuantumRegister, ClassicalRegister, QuantumCircuit
 from qiskit import execute, Aer
 import numpy as np
+import networkx as nx
 
 class QWonCircle:
     """
@@ -17,7 +18,6 @@ class QWonCircle:
         #     raise Exception("Order must be lass than the number of nodes")
 
         self.nodes = 2**node
-        self.cnodes = node
         self.order = order
         self.step = step
         subnode = 0
@@ -31,12 +31,13 @@ class QWonCircle:
                 raise Exception("order must be n-th power of 2")
         print(subnode)
         self.n_qubit = node
+        self.n_cbit = node
         self.subnodes = subnode
 
     def QW(self):
         q = QuantumRegister(self.n_qubit, "node")
         q_subnode = QuantumRegister(self.subnodes, "subn")
-        c = ClassicalRegister(self.cnodes)
+        c = ClassicalRegister(self.n_cbit)
         qc = QuantumCircuit(q, c, q_subnode)
         
         for step in range(self.step):
@@ -44,7 +45,8 @@ class QWonCircle:
             self._incr(qc, q, q_subnode, self.subnodes)
             self._decr(qc, q, q_subnode, self.subnodes)
         # self._cnwx(qc, q_subnode[0], q[0], q[1], q[2])
-        qc.measure(q, c)
+        for mea, cla in zip(range(self.n_qubit), reversed(range(self.n_cbit))):
+            qc.measure(q[mea], c[cla])
         backend = Aer.get_backend('qasm_simulator')
         job = execute(qc, backend=backend, shots=1024)
         result = job.result()
@@ -135,8 +137,20 @@ class QWonCircle:
         for j in qubits[self.subnodes:-1]:
             print("jj", j)
             qc.x(j)
+    
+    def visualize(self, ajmatrix, ntype="bit"):
+        """
+        ajmatrix -> adjacency matrix of graph(array like)
+        ntype -> default: bit(string) or add list of node(list)
+        """
+        if ntype == "bit":
+            edge = [format(i, "0%sb" % (self.n_qubit)) for i in range(self.nodes)]
+            print(edge)
+        else:
+            edge = ntype
+        G = nx.graph()
 
 if __name__ == "__main__":
-    test = QWonCircle(3, 2, 4)  # 2**(3), 
+    test = QWonCircle(3, 2, 1)  # 2**(3), 
     count = test.QW()
     print(count)
