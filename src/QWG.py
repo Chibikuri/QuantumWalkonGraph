@@ -4,6 +4,8 @@ from pprint import pprint
 import numpy as np
 import networkx as nx
 import matplotlib.pyplot as plt
+import math
+import time
 
 
 class QWG:
@@ -19,12 +21,78 @@ class QWG:
         self.initial_position = initial_position
         self.coin = coin
         self.step = step
+        self.N = len(adjacency_matrix)
+        self.n = math.ceil(math.log(self.N))
 
     def encoding(self):
         '''
         encoder from graph (adjacency matrix) to quantum circuit
+        This version cost too much resource. FIXME
         '''
-        pass
+        graph_x = QuantumRegister(self.n, 'graph_x')
+        graph_y = QuantumRegister(self.n, 'graph_y')
+        Adjacency_xy = QuantumRegister(1, 'ajxy')
+        state_x = QuantumRegister(self.n, 'statex')
+        state_y = QuantumRegister(self.n, 'statey')
+        ancilla = QuantumRegister(4*self.n, 'anc')
+        classical = ClassicalRegister(4*self.n, 'result')
+        
+        backend = Aer.get_backend('qasm_simulator')
+        # print(Qwalk)
+        #  ---experience---
+        count_results = []
+        start = time.time()
+        # HACK more efficient way
+        for t in range(self.step):
+            for x, _ in enumerate(self.ajmatrix):
+                for y, Axy in enumerate(self.ajmatrix[x]):
+                    Qwalk = QuantumCircuit(graph_x, graph_y, Adjacency_xy, state_x, state_y, ancilla, classical)
+                    print(self.ajmatrix[x])
+                    print("initial params!", x, y, Axy)
+                    self.initialize(Qwalk, graph_x, graph_y, state_x, state_y, x, y, Axy)
+                    self._compute(Qwalk, graph_x, graph_y, Adjacency_xy, state_x, state_y, ancilla)
+                    
+
+                    Qwalk.measure(ancilla, classical)
+                    job = execute(Qwalk, backend=backend, shots=1024)
+                    result = job.result()
+                    count = result.get_counts(Qwalk)
+                    count_results.append(count)
+                    # print(Qwalk)
+        # print(Qwalk)
+        end = time.time() - start
+        print(end)
+    
+    def _compute(self, qc, graphx, graphy, Axy, statex, statey, ancilla):
+        xglist = [i for i in graphx]
+        xslist = [i for i in statex]
+        xlist = xglist + xslist
+        print(xlist)
+
+    def initialize(self, qc, graphx, graphy, statex, statey, x, y, Axy):
+        '''
+        qc -> Quantum Circuit(object)
+        graph -> Quantum Register of graph part(object)
+        state -> Quantum Register of state part(object)
+        x -> integer(x col of ajmatrix)
+        y -> integer(y row of ajmatrix)
+        Axy -> integer(value of ajmatrix)
+        '''
+        graph_x = list(format(x, '0%sb' % (self.n)))
+        graph_y = list(format(y, '0%sb' % (self.n)))
+        for index, ini_x in enumerate(graph_x):
+            print("index", ini_x=="1", ini_x)
+            if ini_x == '1':
+                qc.x(graphx[index])
+                qc.x(statex[index])
+
+        for index, ini_y in enumerate(graph_y):
+            print("index", index)
+            if ini_y == '1':
+                qc.x(graphy[index])
+                qc.x(statey[index])
+
+        return qc
 
     def make_graph(self, settings={'img_size': (8, 8),
                                    'node_size': 600, 
@@ -55,6 +123,40 @@ class QWG:
         plt.axis("off")
         plt.show()
 
+    def _cnx(self, qc, *qubits):
+        if len(qubits) == 3:
+            qc.ccx(*qubits)
+        elif len(qubits) > 3:
+            last = qubits[-1]
+            qc.crz(np.pi/2, qubits[-2], qubits[-1])
+            qc.cu3(np.pi/2, 0, 0, qubits[-2], qubits[-1])
+            self._cnx(qc, *qubits[:-2], qubits[-1])
+            qc.cu3(-np.pi/2, 0, 0, qubits[-2], qubits[-1])
+            self._cnx(qc, *qubits[:-2], qubits[-1])
+            qc.crz(-np.pi/2, qubits[-2], qubits[-1])
+        elif len(qubits) == 2:
+            qc.cx(*qubits)
+    
+    def _cnwx(self, qc, *qubits):
+        for i in qubits[self.subnodes:-1]:
+            print(i)
+            qc.x(i)
+        if len(qubits) == 3:
+            qc.ccx(*qubits)
+        elif len(qubits) > 3:
+            last = qubits[-1]
+            qc.crz(np.pi/2, qubits[-2], qubits[-1])
+            qc.cu3(np.pi/2, 0, 0, qubits[-2], qubits[-1])
+            self._cnx(qc, *qubits[:-2], qubits[-1])
+            qc.cu3(-np.pi/2, 0, 0, qubits[-2], qubits[-1])
+            self._cnx(qc, *qubits[:-2], qubits[-1])
+            qc.crz(-np.pi/2, qubits[-2], qubits[-1])
+        elif len(qubits) == 2:
+            qc.cx(*qubits)
+        for j in qubits[self.subnodes:-1]:
+            print("jj", j)
+            qc.x(j)
+
     @staticmethod
     def twomod(x):
         bin_node = 0
@@ -68,17 +170,22 @@ class QWG:
                 x += 1
         return bin_node
 
+        
+
 if __name__ == '__main__':
-    ajmatrix = np.array(((0, 1, 0, 1, 0, 0, 0, 1),
-                         (1, 0, 1, 1, 0, 0, 0, 0),
-                         (0, 1, 0, 1, 0, 1, 0, 0),
+    ajmatrix = np.array(((0, 1, 0, 0, 0, 0, 0, 1),
+                         (1, 0, 1, 0, 0, 0, 0, 0),
+                         (0, 1, 0, 1, 0, 0, 0, 0),
                          (0, 0, 1, 0, 1, 0, 0, 0),
                          (0, 0, 0, 1, 0, 1, 0, 0),
                          (0, 0, 0, 0, 1, 0, 1, 0),
                          (0, 0, 0, 0, 0, 1, 0, 1),
                          (1, 0, 0, 0, 0, 0, 1, 0)))  # Circle TODO expand
-    ajmatrix = np.array(np.random.choice([0, 1], (10, 10)))
+    # ajmatrix = np.array(((0, 1),
+    #                      (1, 0)))
+    # ajmatrix = np.array(np.random.choice([0, 1], (10, 10)))
     hadamard_coin = 1/np.sqrt(2)*np.array(((1, 1),
                                            (1, -1)))
     test = QWG(ajmatrix, initial_position=0, coin="H", step=1)
-    test.make_graph()
+    # test.make_graph()
+    test.encoding()
