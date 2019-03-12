@@ -35,7 +35,8 @@ class QWG:
         state_x = QuantumRegister(self.n, 'statex')
         state_y = QuantumRegister(self.n, 'statey')
         ancilla = QuantumRegister(4*self.n, 'anc')
-        classical = ClassicalRegister(4*self.n, 'result')
+        classicala = ClassicalRegister(self.n, 'result1')
+        classicalb = ClassicalRegister(self.n, 'result2')
         
         backend = Aer.get_backend('qasm_simulator')
         # print(Qwalk)
@@ -46,28 +47,28 @@ class QWG:
         for t in range(self.step):
             for x, _ in enumerate(self.ajmatrix):
                 for y, Axy in enumerate(self.ajmatrix[x]):
-                    Qwalk = QuantumCircuit(graph_x, graph_y, Adjacency_xy, state_x, state_y, ancilla, classical)
+                    Qwalk = QuantumCircuit(graph_x, graph_y, Adjacency_xy, state_x, state_y, ancilla, classicala, classicalb)
                     print(self.ajmatrix[x])
                     print("initial params!", x, y, Axy)
                     self.initialize(Qwalk, graph_x, graph_y, state_x, state_y, x, y, Axy)
                     self._compute(Qwalk, graph_x, graph_y, Adjacency_xy, state_x, state_y, ancilla)
-                    
-
-                    Qwalk.measure(ancilla, classical)
+                    Qwalk.measure(state_x, classicala)
+                    Qwalk.measure(state_y, classicalb)
                     job = execute(Qwalk, backend=backend, shots=1024)
                     result = job.result()
                     count = result.get_counts(Qwalk)
                     count_results.append(count)
-                    # print(Qwalk)
-        # print(Qwalk)
+                    print(Qwalk)
+        print(count_results)
         end = time.time() - start
         print(end)
-    
+        
+
     def _compute(self, qc, graphx, graphy, Axy, statex, statey, ancilla):
         xglist = [i for i in graphx]
         xslist = [i for i in statex]
         xlist = xglist + xslist
-        print(xlist)
+        xlist.append(ancilla[0])
 
     def initialize(self, qc, graphx, graphy, statex, statey, x, y, Axy):
         '''
@@ -181,8 +182,8 @@ if __name__ == '__main__':
                          (0, 0, 0, 0, 1, 0, 1, 0),
                          (0, 0, 0, 0, 0, 1, 0, 1),
                          (1, 0, 0, 0, 0, 0, 1, 0)))  # Circle TODO expand
-    # ajmatrix = np.array(((0, 1),
-    #                      (1, 0)))
+    ajmatrix = np.array(((0, 1),
+                         (1, 0)))
     # ajmatrix = np.array(np.random.choice([0, 1], (10, 10)))
     hadamard_coin = 1/np.sqrt(2)*np.array(((1, 1),
                                            (1, -1)))
