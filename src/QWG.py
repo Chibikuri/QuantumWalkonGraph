@@ -153,10 +153,9 @@ class QWG:
             self._cnx(qc, *qubits[:-2], qubits[-1])
             qc.crz(-np.pi/2, qubits[-2], qubits[-1])
         elif len(qubits) == 2:
-            qc.cx(*qubits)
-        for j in qubits[self.subnodes:-1]:
-            print("jj", j)
-            qc.x(j)
+            qc.cx(*qubits) 
+            for j in qubits[self.subnodes:-1]: 
+                qc.x(j)
 
     @staticmethod
     def twomod(x):
@@ -184,9 +183,9 @@ if __name__ == '__main__':
                          (1, 0, 0, 0, 0, 0, 1, 0)))  # Circle TODO expand
     ajmatrix = np.array(((0, 1),
                          (1, 0)))
-    # ajmatrix = np.array(np.random.choice([0, 1], (10, 10)))
+    ajmatrix = np.array(np.random.choice([0, 1], (10, 10)))
     hadamard_coin = 1/np.sqrt(2)*np.array(((1, 1),
                                            (1, -1)))
     test = QWG(ajmatrix, initial_position=0, coin="H", step=1)
-    # test.make_graph()
-    test.encoding()
+    test.make_graph()
+    #test.encoding()
